@@ -33,7 +33,31 @@ def dashboard(cu: User = Depends(get_current_user), db: Session = Depends(get_db
 @router.get("/ping-device")
 def ping_device(cu: User = Depends(get_current_user), timeout: int = 5):
     """Odešle MQTT ping MCU a čeká na pong. Vrací status a latenci."""
-    return mqtt.ping(cu.username, timeout=timeout)
+    # Starý endpoint pro kompatibilitu — pinguje dispenser
+    return mqtt.ping("dispenser", cu.username, timeout=timeout)
+
+
+@router.get("/ping-dispenser")
+def ping_dispenser(cu: User = Depends(get_current_user), timeout: int = 5):
+    """Vrátí stav připojení dávkovače"""
+    return mqtt.ping("dispenser", cu.username, timeout=timeout)
+
+
+@router.get("/ping-scale")
+def ping_scale(cu: User = Depends(get_current_user), timeout: int = 5):
+    """Vrátí stav připojení váhy"""
+    return mqtt.ping("scale", cu.username, timeout=timeout)
+
+
+@router.get("/ping-device-all")
+def ping_device_all(cu: User = Depends(get_current_user), timeout: int = 5):
+    """Vrátí stav připojení obou zařízení (dispenser a scale)"""
+    dispenser_result = mqtt.ping("dispenser", cu.username, timeout=timeout)
+    scale_result = mqtt.ping("scale", cu.username, timeout=timeout)
+    return {
+        "dispenser": dispenser_result,
+        "scale": scale_result
+    }
 
 
 @router.put("/user/layers")

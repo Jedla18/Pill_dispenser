@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
+from sqlalchemy import DateTime, Float
 
 
 class User(Base):
@@ -13,6 +15,7 @@ class User(Base):
     pills        = relationship("Pill",        back_populates="owner")
     consumptions = relationship("Consumption", back_populates="owner")
     loaded_pills = relationship("LoadedPill",  back_populates="owner")
+    weight_records = relationship("WeightRecord", back_populates="owner")
 
 
 class Pill(Base):
@@ -50,3 +53,13 @@ class Consumption(Base):
     owner_id  = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="consumptions")
+
+class WeightRecord(Base):
+    __tablename__ = "weight_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow) # Kdy měření proběhlo
+    weight = Column(Float, nullable=False)               # Hmotnost v kg
+    owner_id = Column(Integer, ForeignKey("users.id"))
+
+    owner = relationship("User", back_populates="weight_records")

@@ -41,23 +41,26 @@ def expand_pills_to_slots(pills: list, max_slots: int):
         if pill.repeat == "daily":
             if "T" in t: t = t.split("T")[1][:5]
             t = t[:5]
-            for day_offset in range(7):
+            for day_offset in range(max_slots):
                 add_slot((day_offset, t), pill_str, "daily")
 
         elif pill.repeat == "weekly":
             parts = t.split(":")
             if len(parts) >= 4 and parts[0] == "weekly":
-                target_weekday = int(parts[1])
+                # Upraveno pro podporu více dnů, např. "weekly:1,2:08:00"
+                target_weekdays = [int(w) for w in parts[1].split(",")]
                 hhmm = parts[2] + ":" + parts[3]
             else:
-                target_weekday = today.weekday()
+                target_weekdays = [today.weekday()]
                 hhmm = t[:5] if len(t) >= 5 else "08:00"
 
             our_to_py = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
-            py_target = our_to_py.get(target_weekday, 0)
-            for week in range(8):
-                days_until = (py_target - today.weekday()) % 7 + (week * 7)
-                add_slot((days_until, hhmm), pill_str, "weekly")
+            
+            for tw in target_weekdays:
+                py_target = our_to_py.get(tw, 0)
+                for week in range(max_slots):
+                    days_until = (py_target - today.weekday()) % 7 + (week * 7)
+                    add_slot((days_until, hhmm), pill_str, "weekly")
 
         else:
             if "T" in t:

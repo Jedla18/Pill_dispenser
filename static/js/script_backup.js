@@ -26,11 +26,11 @@ function formatPillTime(s, repeat) {
     }
 
     if (repeat === "weekly" || s.startsWith("weekly:")) {
-        // weekly:WEEKDAY:HH:MM
+        // weekly:WEEKDAYS:HH:MM
         const parts = s.split(":");
-        const day   = DAYS_CS[parseInt(parts[1])] || "?";
+        const days  = parts[1].split(",").map(d => DAYS_CS[parseInt(d)] || "?").join(", ");
         const hhmm  = parts[2] + ":" + (parts[3] || "00");
-        return `<span class="text-warning fw-bold">${day} ${hhmm}</span>
+        return `<span class="text-warning fw-bold">${days} ${hhmm}</span>
                 <small class="text-muted d-block">každý týden</small>`;
     }
 
@@ -51,9 +51,9 @@ function formatTimeOnly(s) {
     if (!s) return "";
     if (s.startsWith("weekly:")) {
         const parts = s.split(":");
-        const day  = DAYS_CS[parseInt(parts[1])] || "";
+        const days = parts[1].split(",").map(d => DAYS_CS[parseInt(d)] || "").join(", ");
         const time = parts[2] + ":" + (parts[3] || "00");
-        return `${day} ${time}`;
+        return `${days} ${time}`;
     }
     if (s.includes("T")) return s.split("T")[1].substring(0,5);
     return s.substring(0,5);
@@ -129,21 +129,21 @@ async function loadDashboard() {
             </span>
         </div>
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card border-0 shadow-sm text-center p-3">
                     <div class="text-primary fs-2 mb-1"><i class="bi bi-capsule"></i></div>
                     <div class="fs-4 fw-bold">${data.planned_pills.length}</div>
                     <div class="text-muted small">Léků v plánu</div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card border-0 shadow-sm text-center p-3">
                     <div class="text-success fs-2 mb-1"><i class="bi bi-box-seam"></i></div>
                     <div class="fs-4 fw-bold">${data.loaded_pills.length}</div>
                     <div class="text-muted small">Léků v dávkovači</div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card border-0 shadow-sm text-center p-3">
                     <div class="text-warning fs-2 mb-1"><i class="bi bi-grid"></i></div>
                     <div class="fs-4 fw-bold">${data.layers * 7}</div>
@@ -152,13 +152,27 @@ async function loadDashboard() {
             </div>
             <div class="col-md-3">
                 <div class="card border-0 shadow-sm text-center p-3">
-                    <div id="device-status-icon" class="fs-2 mb-1 text-muted">
-                        <i class="bi bi-router"></i>
+                    <div id="dispenser-status-icon" class="fs-2 mb-1 text-muted">
+                        <i class="bi bi-capsule"></i>
                     </div>
-                    <div id="device-status-text" class="fw-bold text-muted">Neověřeno</div>
-                    <div id="device-latency" class="text-muted small mb-2">—</div>
-                    <button onclick="pingDevice()" id="ping-btn" class="btn btn-sm btn-outline-secondary w-100">
-                        <i class="bi bi-wifi me-1"></i>Ping MCU
+                    <div class="fw-bold fs-6 mb-1">Dávkovač</div>
+                    <div id="dispenser-status-text" class="fw-bold text-muted">Neověřeno</div>
+                    <div id="dispenser-latency" class="text-muted small mb-2">—</div>
+                    <button onclick="pingDispenser()" id="ping-dispenser-btn" class="btn btn-sm btn-outline-secondary w-100">
+                        <i class="bi bi-wifi me-1"></i>Ping
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div id="scale-status-icon" class="fs-2 mb-1 text-muted">
+                        <i class="bi bi-speedometer"></i>
+                    </div>
+                    <div class="fw-bold fs-6 mb-1">Váha</div>
+                    <div id="scale-status-text" class="fw-bold text-muted">Neověřeno</div>
+                    <div id="scale-latency" class="text-muted small mb-2">—</div>
+                    <button onclick="pingScale()" id="ping-scale-btn" class="btn btn-sm btn-outline-secondary w-100">
+                        <i class="bi bi-wifi me-1"></i>Ping
                     </button>
                 </div>
             </div>
@@ -310,21 +324,21 @@ function loadAddPills() {
                             </div>
                         </div>
                         <div class="mb-3" id="weekday-row" style="display:none;">
-                            <label class="form-label">Den v týdnu</label>
+                            <label class="form-label">Dny v týdnu</label>
                             <div class="d-flex gap-1 flex-wrap">
-                                <input type="radio" class="btn-check" name="weekday" id="wd-1" value="1" checked>
+                                <input type="checkbox" class="btn-check" name="weekday" id="wd-1" value="1" checked>
                                 <label class="btn btn-sm btn-outline-secondary" for="wd-1">Po</label>
-                                <input type="radio" class="btn-check" name="weekday" id="wd-2" value="2">
+                                <input type="checkbox" class="btn-check" name="weekday" id="wd-2" value="2">
                                 <label class="btn btn-sm btn-outline-secondary" for="wd-2">Út</label>
-                                <input type="radio" class="btn-check" name="weekday" id="wd-3" value="3">
+                                <input type="checkbox" class="btn-check" name="weekday" id="wd-3" value="3">
                                 <label class="btn btn-sm btn-outline-secondary" for="wd-3">St</label>
-                                <input type="radio" class="btn-check" name="weekday" id="wd-4" value="4">
+                                <input type="checkbox" class="btn-check" name="weekday" id="wd-4" value="4">
                                 <label class="btn btn-sm btn-outline-secondary" for="wd-4">Čt</label>
-                                <input type="radio" class="btn-check" name="weekday" id="wd-5" value="5">
+                                <input type="checkbox" class="btn-check" name="weekday" id="wd-5" value="5">
                                 <label class="btn btn-sm btn-outline-secondary" for="wd-5">Pá</label>
-                                <input type="radio" class="btn-check" name="weekday" id="wd-6" value="6">
+                                <input type="checkbox" class="btn-check" name="weekday" id="wd-6" value="6">
                                 <label class="btn btn-sm btn-outline-secondary" for="wd-6">So</label>
-                                <input type="radio" class="btn-check" name="weekday" id="wd-0" value="0">
+                                <input type="checkbox" class="btn-check" name="weekday" id="wd-0" value="0">
                                 <label class="btn btn-sm btn-outline-secondary" for="wd-0">Ne</label>
                             </div>
                         </div>
@@ -418,11 +432,12 @@ async function submitPill() {
         // jen HH:MM
         if (time.includes("T")) time = time.substring(11, 16);
     } else if (repeat === "weekly") {
-        // zakódujeme jako "weekly:WEEKDAY:HH:MM"
+        // zakódujeme jako "weekly:WEEKDAY1,WEEKDAY2:HH:MM"
         // WEEKDAY: 0=Ne, 1=Po, ..., 6=So
-        const weekday = document.querySelector('input[name="weekday"]:checked')?.value || "1";
+        const checkedDays = Array.from(document.querySelectorAll('input[name="weekday"]:checked')).map(el => el.value);
+        const weekdays = checkedDays.length > 0 ? checkedDays.join(",") : "1";
         if (time.includes("T")) time = time.substring(11, 16);
-        time = `weekly:${weekday}:${time}`;
+        time = `weekly:${weekdays}:${time}`;
     }
 
     const r = await fetchWithAuth("/api/pills", {
@@ -675,7 +690,7 @@ async function startFillingProcess() {
 
         const skippedRows = Object.values(skippedGroups).map(g => {
             const timeLabel = g.repeat !== "none"
-                ? `${formatDateStr(g.first)} <span class="text-muted">a dále (${g.count}×)</span>`
+                ? `${formatDateStr(g.first)} <span class="text-muted">a dále </span>`
                 : formatDateStr(g.first);
             return `<tr>
                 <td class="ps-3">${timeLabel}</td>
@@ -688,7 +703,7 @@ async function startFillingProcess() {
         <div class="card border-0 shadow-sm mt-4">
             <div class="card-header bg-warning bg-opacity-25 d-flex align-items-center gap-2">
                 <i class="bi bi-exclamation-triangle text-warning fs-5"></i>
-                <strong>Léky co se nevešly do dávkovače (${data.skipped.length} dávek)</strong>
+                <strong>Léky co se nevešly do dávkovače:</strong>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm align-middle mb-0">
@@ -931,30 +946,285 @@ async function confirmEmptyAndFill() {
     }
 }
 
-// ─── PING MCU ────────────────────────────────────────────────────────────────
+// ─── TABULKA HISTORIE VÁHY ───────────────────────────────────────────────────
 
-async function pingDevice() {
-    const btn        = document.getElementById("ping-btn");
-    const iconEl     = document.getElementById("device-status-icon");
-    const textEl     = document.getElementById("device-status-text");
-    const latencyEl  = document.getElementById("device-latency");
+async function loadCustomTable() {
+    // 1. ZMĚNA: Správné URL pro historii váhy
+    const r = await fetchWithAuth("/api/scale/history");
+
+    if (!r.ok) {
+        contentDiv.innerHTML = `
+            <h2 class="mb-4">Historie vážení</h2>
+            <div class="alert alert-danger">
+                Nepodařilo se načíst data z váhy.
+            </div>`;
+        return;
+    }
+
+    const data = await r.json();
+    const currentHeight = localStorage.getItem("userHeight_cm") || 175;
+
+    let html = `
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-speedometer me-2 text-secondary"></i>Historie vážení</h2>
+        <div class="d-flex align-items-center gap-2">
+            <label class="text-muted text-nowrap">Vaše výška (cm):</label>
+            <input type="number" id="heightInput" class="form-control form-control-sm" value="${currentHeight}" style="width: 80px;" onchange="updateHeight()">
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 text-primary"><i class="bi bi-graph-up me-2"></i>Vývoj váhy</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="weightChart" style="max-height: 300px; width: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white text-center">
+                    <h5 class="mb-0 text-info"><i class="bi bi-activity me-2"></i>Aktuální BMI</h5>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                    <div style="position: relative; width: 100%; max-width: 250px;">
+                        <canvas id="bmiChart"></canvas>
+                        <div id="bmiText" class="position-absolute w-100 text-center" style="top: 60%; left: 0; transform: translateY(-50%);">
+                            <h3 class="mb-0 fw-bold" id="bmiValue">--</h3>
+                            <small class="text-muted fw-bold" id="bmiLabel">Neznámé</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <table class="table table-striped align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">ID</th>
+                        <th>Datum a čas</th>
+                        <th>Trend (Změna)</th>
+                        <th class="pe-4">Naměřená váha</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    // 2. ZMĚNA: data je rovnou pole (Array), nikoliv data.items
+    if (!data || data.length === 0) {
+        html += `<tr><td colspan="4" class="text-center py-4 text-muted">Zatím se nikdo nevážil.</td></tr>`;
+    } else {
+        // Vykreslení jednotlivých řádků
+        data.forEach((item, index) => {
+            let trendHtml = `<span class="text-muted">—</span>`; // Pro první naměřenou hodnotu neznáme předchozí
+            
+            // Protože jsou data od nejnovějšího po nejstarší, porovnáme s hodnotou index + 1
+            if (index < data.length - 1) {
+                const prevItem = data[index + 1];
+                const diff = parseFloat(item.weight) - parseFloat(prevItem.weight);
+                
+                if (diff > 0) {
+                    trendHtml = `<span class="text-danger fw-bold"><i class="bi bi-arrow-up-right me-1"></i>+${diff.toFixed(1)} kg</span>`;
+                } else if (diff < 0) {
+                    trendHtml = `<span class="text-success fw-bold"><i class="bi bi-arrow-down-right me-1"></i>${diff.toFixed(1)} kg</span>`;
+                } else {
+                    trendHtml = `<span class="text-muted fw-bold"><i class="bi bi-dash me-1"></i>0.0 kg</span>`;
+                }
+            }
+
+            html += `<tr>
+                <td class="ps-4">${item.id || "-"}</td>
+                <td>${formatDateStr(item.timestamp)}</td>
+                <td>${trendHtml}</td>
+                <td class="pe-4"><span class="badge bg-primary fs-6">${item.weight} kg</span></td>
+            </tr>`;
+        });
+    }
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    </div>`;
+
+    contentDiv.innerHTML = html;
+
+    // Vykreslení grafů
+    if (data && data.length > 0) {
+        // Data grafu váhy
+        const reversedData = [...data].reverse();
+        const labels = reversedData.map(item => formatDateStr(item.timestamp));
+        const weights = reversedData.map(item => parseFloat(item.weight));
+
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Naměřená váha (kg)',
+                    data: weights,
+                    borderColor: 'rgba(13, 110, 253, 1)', // Bootstrap primary
+                    backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(13, 110, 253, 1)',
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.3 // lehce zaoblená křivka
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Váha (kg)' }
+                    },
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 10 // nezahltit osu X hromadou popisků
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' kg';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Výpočet BMI z nejnovější váhy (první v poli dat)
+        const latestWeight = parseFloat(data[0].weight);
+        const heightM = parseFloat(document.getElementById("heightInput").value) / 100;
+        
+        if (heightM > 0) {
+            const bmi = latestWeight / (heightM * heightM);
+            let bmiStatus = "";
+            let pointerColor = "";
+            
+            if (bmi < 18.5) { bmiStatus = "Podváha"; pointerColor = "#0dcaf0"; }
+            else if (bmi < 25) { bmiStatus = "Normální"; pointerColor = "#198754"; }
+            else if (bmi < 30) { bmiStatus = "Nadváha"; pointerColor = "#ffc107"; }
+            else { bmiStatus = "Obezita"; pointerColor = "#dc3545"; }
+
+            document.getElementById("bmiValue").textContent = bmi.toFixed(1);
+            document.getElementById("bmiLabel").textContent = bmiStatus;
+            document.getElementById("bmiLabel").style.color = pointerColor;
+
+            // Rotační úhel pro jehlu / segmenty
+            // Rozsah BMI: 15 (min) - 40 (max)
+            const minBmi = 15;
+            const maxBmi = 40;
+            let normalizedBmi = Math.max(minBmi, Math.min(bmi, maxBmi));
+            let bmiValuePercent = (normalizedBmi - minBmi) / (maxBmi - minBmi);
+
+            // Vytvoření půlkruhového gauge grafu
+            const ctxBmi = document.getElementById('bmiChart').getContext('2d');
+            new Chart(ctxBmi, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Podváha', 'Normální', 'Nadváha', 'Obezita'],
+                    datasets: [{
+                        data: [18.5 - 15, 25 - 18.5, 30 - 25, 40 - 30], // šířky segmentů podle BMI stupnice
+                        backgroundColor: ['#0dcaf0', '#198754', '#ffc107', '#dc3545'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    rotation: -90,
+                    circumference: 180,
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    animation: {
+                        onComplete: function(animation) {
+                            // Dovyreslení ukazatele
+                            const chart = animation.chart;
+                            const ctx = chart.ctx;
+                            const chartArea = chart.chartArea;
+                            
+                            const centerX = (chartArea.left + chartArea.right) / 2;
+                            const centerY = chartArea.bottom; // spodek chartArea kvůli půlkruhu
+                            
+                            const angle = Math.PI - (bmiValuePercent * Math.PI); // odleva doprava
+
+                            const innerRadius = chart.innerRadius;
+                            const outerRadius = chart.outerRadius;
+                            const pointerLength = outerRadius - 10;
+                            
+                            const tipX = centerX - pointerLength * Math.cos(angle);
+                            const tipY = centerY - pointerLength * Math.sin(angle);
+                            
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(centerX, centerY);
+                            ctx.lineTo(tipX, tipY);
+                            ctx.lineWidth = 4;
+                            ctx.strokeStyle = '#333';
+                            ctx.stroke();
+                            
+                            ctx.beginPath();
+                            ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+                            ctx.fillStyle = '#333';
+                            ctx.fill();
+                            ctx.restore();
+                        }
+                    }
+                }
+            });
+        }
+    }
+}
+
+function updateHeight() {
+    const h = document.getElementById("heightInput").value;
+    if (h) {
+        localStorage.setItem("userHeight_cm", h);
+        loadCustomTable(); // překreslí graf
+    }
+}
+
+// ─── PING DISPENSER ─────────────────────────────────────────────────────────
+
+async function pingDispenser() {
+    const btn        = document.getElementById("ping-dispenser-btn");
+    const iconEl     = document.getElementById("dispenser-status-icon");
+    const textEl     = document.getElementById("dispenser-status-text");
+    const latencyEl  = document.getElementById("dispenser-latency");
 
     if (!btn) return;
 
     // Stav: čekám
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Čekám...`;
-    iconEl.innerHTML  = `<i class="bi bi-router text-muted"></i>`;
+    iconEl.innerHTML  = `<i class="bi bi-capsule text-muted"></i>`;
     textEl.textContent = "Odesílám ping...";
     textEl.className   = "fw-bold text-muted";
     latencyEl.textContent = "—";
 
-    const r = await fetchWithAuth("/api/ping-device?timeout=5");
+    const r = await fetchWithAuth("/api/ping-dispenser?timeout=5");
     btn.disabled = false;
-    btn.innerHTML = `<i class="bi bi-wifi me-1"></i>Ping MCU`;
+    btn.innerHTML = `<i class="bi bi-wifi me-1"></i>Ping`;
 
     if (!r.ok) {
-        iconEl.innerHTML   = `<i class="bi bi-router text-danger"></i>`;
+        iconEl.innerHTML   = `<i class="bi bi-capsule text-danger"></i>`;
         textEl.textContent = "Chyba API";
         textEl.className   = "fw-bold text-danger";
         return;
@@ -963,14 +1233,65 @@ async function pingDevice() {
     const data = await r.json();
 
     if (data.status === "online") {
-        iconEl.innerHTML   = `<i class="bi bi-router text-success"></i>`;
+        iconEl.innerHTML   = `<i class="bi bi-capsule text-success"></i>`;
         textEl.textContent = "Připojeno";
         textEl.className   = "fw-bold text-success";
         latencyEl.textContent = data.latency_ms !== null ? `${data.latency_ms} ms` : "";
     } else {
-        iconEl.innerHTML   = `<i class="bi bi-router text-danger"></i>`;
+        iconEl.innerHTML   = `<i class="bi bi-capsule text-danger"></i>`;
         textEl.textContent = "Nedostupné";
         textEl.className   = "fw-bold text-danger";
         latencyEl.textContent = "Timeout (5s)";
     }
+}
+
+// ─── PING SCALE ─────────────────────────────────────────────────────────────
+
+async function pingScale() {
+    const btn        = document.getElementById("ping-scale-btn");
+    const iconEl     = document.getElementById("scale-status-icon");
+    const textEl     = document.getElementById("scale-status-text");
+    const latencyEl  = document.getElementById("scale-latency");
+
+    if (!btn) return;
+
+    // Stav: čekám
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Čekám...`;
+    iconEl.innerHTML  = `<i class="bi bi-speedometer text-muted"></i>`;
+    textEl.textContent = "Odesílám ping...";
+    textEl.className   = "fw-bold text-muted";
+    latencyEl.textContent = "—";
+
+    const r = await fetchWithAuth("/api/ping-scale?timeout=5");
+    btn.disabled = false;
+    btn.innerHTML = `<i class="bi bi-wifi me-1"></i>Ping`;
+
+    if (!r.ok) {
+        iconEl.innerHTML   = `<i class="bi bi-speedometer text-danger"></i>`;
+        textEl.textContent = "Chyba API";
+        textEl.className   = "fw-bold text-danger";
+        return;
+    }
+
+    const data = await r.json();
+
+    if (data.status === "online") {
+        iconEl.innerHTML   = `<i class="bi bi-speedometer text-success"></i>`;
+        textEl.textContent = "Připojeno";
+        textEl.className   = "fw-bold text-success";
+        latencyEl.textContent = data.latency_ms !== null ? `${data.latency_ms} ms` : "";
+    } else {
+        iconEl.innerHTML   = `<i class="bi bi-speedometer text-danger"></i>`;
+        textEl.textContent = "Nedostupné";
+        textEl.className   = "fw-bold text-danger";
+        latencyEl.textContent = "Timeout (5s)";
+    }
+}
+
+// ─── PING MCU (stará funkce - kompatibilita) ─────────────────────────────────
+
+async function pingDevice() {
+    // Zastaralá funkce — volej přímo pingDispenser() nebo pingScale()
+    await pingDispenser();
 }
