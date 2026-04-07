@@ -9,8 +9,15 @@ from datetime import datetime, timezone, timedelta
 from database import SessionLocal
 from models import User, LoadedPill, Consumption, WeightRecord
 
+# MQTT Broker - Lokální pro dávkovač a váhu
 MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
+
+# MQTT Broker - Školní HiveMQ Cloud
+MQTT_SCHOOL_BROKER = "716e6715e3b14167aed452d327749c59.s1.eu.hivemq.cloud"
+MQTT_SCHOOL_PORT = 8883
+MQTT_SCHOOL_USER = "student"
+MQTT_SCHOOL_PASSWORD = "4vvg26N4g3TeDF5"
 
 # Upravené globální proměnné pro podporu více zařízení
 _pong_events: dict[str, threading.Event] = {}
@@ -56,7 +63,7 @@ def _on_message(client, userdata, msg):
 
 
 def _handle_scale_data(username, payload):
-    """Uloží příchozí váhu do DB. Čas se vyplní automaticky na serveru."""
+    """Uloží příchozí váhu do DB a odesílá na školní MQTT broker."""
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
@@ -74,10 +81,20 @@ def _handle_scale_data(username, payload):
             db.add(new_rec)
             db.commit()
             print(f"[MQTT] Váha {weight}kg uložena pro {username}.")
+
+            # Odeslaní na školní broker
+            school_payload = {
+                "user": username,
+                "weight": float(weight),
+                "timestamp": new_rec.timestamp.isoformat(),
+                "unit": "kg"
+            }
+            send_to_school(f"student/{username}/weight", school_payload)
     except Exception as e:
         print(f"[MQTT] Chyba při ukládání váhy: {e}")
     finally:
         db.close()
+
 
 # Upravená funkce ping
 def ping(device_type, username, timeout=5):
@@ -89,11 +106,11 @@ def ping(device_type, username, timeout=5):
     send(f"{device_type}/{username}/ping", {"action": "ping"})
 
     is_online = event.wait(timeout=timeout)
-    
+
     # Úklid po eventu
     _pong_events.pop(device_key, None)
     _ping_sent_at.pop(device_key, None)
-    
+
     if is_online:
         return {"status": "online", "latency_ms": _pong_latency.pop(device_key, None)}
     return {"status": "offline"}
@@ -167,23 +184,54 @@ def _handle_dispense_confirm(username: str, payload: dict):
 
 
 def start_listener():
-    """Spustí MQTT listener v background threadu."""
-    client = mqtt.Client(client_id=f"fastapi_server_{time.time()}")  # Unikátní ID klienta
+    """Spustí MQTT listener v background threadu - ŠKOLNÍ BROKER."""
+    client = mqtt.Client(client_id=f"fastapi_server_{time.time()}")
     client.on_message = _on_message
     try:
-        client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
-        # Odebíráme zprávy pro dávkovač i váhu
+        # === PŘIPOJENÍ NA ŠKOLNÍ BROKER (kde je Arduino) ===
+        print("[MQTT] Připojování na školní broker (HiveMQ Cloud)...")
+        client.username_pw_set(MQTT_SCHOOL_USER, MQTT_SCHOOL_PASSWORD)
+        client.tls_set(tls_version=2)
+        client.tls_insecure = True
+
+        client.connect(MQTT_SCHOOL_BROKER, MQTT_SCHOOL_PORT, keepalive=60)
+
         client.subscribe("dispenser/#")
         client.subscribe("scale/#")
-        print("[MQTT] Listener běží a poslouchá na 'dispenser/#' a 'scale/#'")
+        print("[MQTT] ✅ Listener běží na ŠKOLNÍM brokeru a poslouchá na 'dispenser/#' a 'scale/#'")
         client.loop_forever()
     except Exception as e:
-        print(f"[MQTT] Broker nedostupný: {e}")
+        print(f"[MQTT] ❌ Broker nedostupný: {e}")
 
 
 def send(topic: str, payload: dict):
-    """Odešle MQTT zprávu."""
+    """Odešle MQTT zprávu - ŠKOLNÍ BROKER."""
     try:
-        mqtt_publish.single(topic, json.dumps(payload), hostname=MQTT_BROKER, port=MQTT_PORT, qos=1)
+        mqtt_publish.single(
+            topic,
+            json.dumps(payload),
+            hostname=MQTT_SCHOOL_BROKER,
+            port=MQTT_SCHOOL_PORT,
+            auth={"username": MQTT_SCHOOL_USER, "password": MQTT_SCHOOL_PASSWORD},
+            tls={"ca_certs": None},
+            qos=1
+        )
+        print(f"[MQTT] Zpráva odeslána: {topic}")
     except Exception as e:
         print(f"[MQTT] Publish selhal ({topic}): {e}")
+
+def send_to_school(topic: str, payload: dict):
+    """Odešle MQTT zprávu do školního brokeru (HiveMQ Cloud s SSL/TLS)."""
+    try:
+        mqtt_publish.single(
+            topic,
+            json.dumps(payload),
+            hostname=MQTT_SCHOOL_BROKER,
+            port=MQTT_SCHOOL_PORT,
+            auth={"username": MQTT_SCHOOL_USER, "password": MQTT_SCHOOL_PASSWORD},
+            tls={"ca_certs": None},
+            qos=1
+        )
+        print(f"[MQTT School] Odesláno na školní broker: {topic}")
+    except Exception as e:
+        print(f"[MQTT School] Publish selhal ({topic}): {e}")

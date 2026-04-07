@@ -54,3 +54,10 @@ class WeightRecordOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+class WeightRecordCreate(BaseModel):
+    """Schema pro vytvoření nového záznamu váhy."""
+    weight: float = Field(..., gt=0, description="Hmotnost v kg (musí být kladná)")
+    
+    class Config:
+        from_attributes = True

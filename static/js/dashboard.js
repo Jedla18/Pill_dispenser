@@ -87,19 +87,24 @@ export async function loadDashboard() {
                     <div class="card-body p-0">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
-                                <tr><th class="ps-3">Čas podání</th><th>Obsah</th><th class="pe-3">Slot</th></tr>
+                                <tr><th class="ps-3">Čas podání</th><th>Obsah</th><th class="pe-3">Slot</th><th style="width:50px;"></th></tr>
                             </thead>
                             <tbody>
     `;
 
     if (data.loaded_pills.length === 0) {
-        html += `<tr><td colspan="3" class="text-center py-4 text-muted">Dávkovač je prázdný</td></tr>`;
+        html += `<tr><td colspan="4" class="text-center py-4 text-muted">Dávkovač je prázdný</td></tr>`;
     } else {
         data.loaded_pills.forEach(lp => {
             html += `<tr>
                 <td class="ps-3"><strong>${formatDateStr(lp.time)}</strong></td>
                 <td><small>${lp.content}</small></td>
                 <td class="pe-3"><span class="badge bg-primary">L${lp.layer}·P${lp.position}</span></td>
+                <td class="pe-3">
+                    <button onclick="deleteLoadedPill(${lp.id})" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
             </tr>`;
         });
     }

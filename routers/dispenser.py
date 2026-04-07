@@ -27,6 +27,32 @@ def get_loaded_pills(cu: User = Depends(get_current_user), db: Session = Depends
     }
 
 
+@router.delete("/loaded-pills/{loaded_pill_id}")
+def delete_loaded_pill(
+    loaded_pill_id: int,
+    cu: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Smaže lék z dávkovače (LoadedPill)."""
+    pill = db.query(LoadedPill).filter(
+        LoadedPill.id == loaded_pill_id,
+        LoadedPill.owner_id == cu.id
+    ).first()
+    if not pill:
+        raise HTTPException(404, "Lék v dávkovači nenalezen")
+    
+    pill_content = pill.pills_content
+    db.delete(pill)
+    db.commit()
+    
+    # Poslat reload zprávu do MCU
+    mqtt.send(f"dispenser/{cu.username}/reload", {
+        "action": "reload", "message": "Lék byl smazán z dávkovače, načti nová data"
+    })
+    
+    return {"message": f"Lék '{pill_content}' smazán z dávkovače"}
+
+
 @router.post("/dispense-confirm")
 def dispense_confirm(
     body: DispenseConfirm,

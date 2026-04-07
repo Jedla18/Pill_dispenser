@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -14,7 +14,24 @@ def get_consumption(cu: User = Depends(get_current_user), db: Session = Depends(
              .order_by(Consumption.date.desc(), Consumption.time.desc()).all()
     return {
         "consumed": [
-            {"date": c.date, "time": c.time, "name": c.pill_name, "status": c.status}
+            {"id": c.id, "date": c.date, "time": c.time, "name": c.pill_name, "status": c.status}
             for c in rows
         ]
     }
+
+
+@router.delete("/consumption/{consumption_id}")
+def delete_consumption(consumption_id: int, cu: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Smaže záznam o užití léku z historie."""
+    record = db.query(Consumption).filter(
+        Consumption.id == consumption_id,
+        Consumption.owner_id == cu.id
+    ).first()
+    
+    if not record:
+        raise HTTPException(status_code=404, detail="Záznam nenalezen")
+    
+    db.delete(record)
+    db.commit()
+    
+    return {"message": "Záznam smazán"}

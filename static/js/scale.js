@@ -27,6 +27,9 @@ export async function loadCustomTable() {
         <div class="d-flex align-items-center gap-2">
             <label class="text-muted text-nowrap">Vaše výška (cm):</label>
             <input type="number" id="heightInput" class="form-control form-control-sm" value="${currentHeight}" style="width: 80px;" onchange="updateHeight()">
+            <button class="btn btn-sm btn-success" onclick="openAddWeightModal()">
+                <i class="bi bi-plus-circle me-1"></i>Přidat váhu
+            </button>
         </div>
     </div>
     
@@ -67,14 +70,15 @@ export async function loadCustomTable() {
                         <th class="ps-4">ID</th>
                         <th>Datum a čas</th>
                         <th>Trend (Změna)</th>
-                        <th class="pe-4">Naměřená váha</th>
+                        <th>Naměřená váha</th>
+                        <th class="pe-4">Akce</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
 
     if (!data || data.length === 0) {
-        html += `<tr><td colspan="4" class="text-center py-4 text-muted">Zatím se nikdo nevážil.</td></tr>`;
+        html += `<tr><td colspan="5" class="text-center py-4 text-muted">Zatím se nikdo nevážil.</td></tr>`;
     } else {
         data.forEach((item, index) => {
             let trendHtml = `<span class="text-muted">—</span>`;
@@ -97,6 +101,11 @@ export async function loadCustomTable() {
                 <td>${formatDateStr(item.timestamp)}</td>
                 <td>${trendHtml}</td>
                 <td class="pe-4"><span class="badge bg-primary fs-6">${item.weight} kg</span></td>
+                <td class="pe-4">
+                    <button class="btn btn-sm btn-outline-danger btn-delete-weight" data-record-id="${item.id}">
+                        <i class="bi bi-trash me-1"></i>Smazat
+                    </button>
+                </td>
             </tr>`;
         });
     }
@@ -240,6 +249,30 @@ export async function loadCustomTable() {
             });
         }
     }
+
+    // Event listenery pro tlačítka "Smazat"
+    document.querySelectorAll(".btn-delete-weight").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const recordId = btn.getAttribute("data-record-id");
+            
+            if (!confirm("Opravdu chcete smazat tento záznam váhy?")) {
+                return;
+            }
+            
+            const response = await fetchWithAuth(`/api/scale/${recordId}`, {
+                method: "DELETE"
+            });
+            
+            if (response.ok) {
+                // Záznam byl smazán, obnovíme tabulku
+                await loadCustomTable();
+            } else {
+                const error = await response.json();
+                alert(`Chyba: ${error.detail || "Nepodařilo se smazat záznam"}`);
+            }
+        });
+    });
 }
 
 export function updateHeight() {
@@ -249,4 +282,75 @@ export function updateHeight() {
         loadCustomTable();
     }
 }
+
+export function openAddWeightModal() {
+    const modal = `
+    <div class="modal fade" id="addWeightModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Přidat váhu</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Váha (kg)</label>
+                        <input type="number" id="weightInput" class="form-control" placeholder="Např. 75.5" step="0.1" min="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušit</button>
+                    <button type="button" class="btn btn-primary" onclick="addWeightRecord()">Přidat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    // Odstraníme starý modal, pokud existuje
+    const oldModal = document.getElementById("addWeightModal");
+    if (oldModal) oldModal.remove();
+    
+    // Vložíme nový modal do DOM
+    document.body.insertAdjacentHTML("beforeend", modal);
+    
+    // Zobrazíme modal
+    const modalInstance = new bootstrap.Modal(document.getElementById("addWeightModal"));
+    modalInstance.show();
+}
+
+export async function addWeightRecord() {
+    const weight = parseFloat(document.getElementById("weightInput").value);
+    
+    if (!weight || weight <= 0) {
+        alert("Prosím, zadejte platnou váhu (větší než 0)");
+        return;
+    }
+    
+    try {
+        const response = await fetchWithAuth("/api/scale/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ weight: weight })
+        });
+        
+        if (response.ok) {
+            // Zavřeme modal a obnovíme tabulku
+            bootstrap.Modal.getInstance(document.getElementById("addWeightModal")).hide();
+            await loadCustomTable();
+            alert("Váha byla přidána a odeslána na školní MQTT broker!");
+        } else {
+            const error = await response.json();
+            alert(`Chyba: ${error.detail || "Nepodařilo se přidat váhu"}`);
+        }
+    } catch (err) {
+        alert(`Chyba: ${err.message}`);
+    }
+}
+
+// Exportovat funkci pro globální přístup
+window.openAddWeightModal = openAddWeightModal;
+window.addWeightRecord = addWeightRecord;
 

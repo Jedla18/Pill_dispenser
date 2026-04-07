@@ -63,11 +63,15 @@ def expand_pills_to_slots(pills: list, max_slots: int):
                     add_slot((days_until, hhmm), pill_str, "weekly")
 
         else:
+            # Jednorázový lék (none)
             if "T" in t:
                 hhmm = t.split("T")[1][:5]
                 try:
                     target_date = date.fromisoformat(t.split("T")[0])
-                    day_offset  = max((target_date - today).days, 0)
+                    # FILTRUJ ZASTARALÉ LÉKY - ignorovat ty v minulosti
+                    if target_date < today:
+                        continue  # Přeskočit starý lék
+                    day_offset  = (target_date - today).days
                 except Exception:
                     day_offset = 0
             else:
@@ -130,9 +134,25 @@ def delete_pill(pill_id: int, cu: User = Depends(get_current_user), db: Session 
     pill = db.query(Pill).filter(Pill.id == pill_id, Pill.owner_id == cu.id).first()
     if not pill:
         raise HTTPException(404, "Lék nenalezen")
+    
+    # Smazat lék z plánu
     db.delete(pill)
+    
+    # Smazat všechny odpovídající pilulky z dávkovače (LoadedPill)
+    # Odstraníme ty, které obsahují jméno tohoto léku
+    loaded_pills = db.query(LoadedPill).filter(LoadedPill.owner_id == cu.id).all()
+    for lp in loaded_pills:
+        # Pokud obsah obsahuje název léku, smazat
+        if pill.name in lp.pills_content:
+            db.delete(lp)
+    
+    # Poslat reload zprávu do MCU
+    mqtt.send(f"dispenser/{cu.username}/reload", {
+        "action": "reload", "message": "Lék byl smazán, načti nová data"
+    })
+    
     db.commit()
-    return {"message": "Lék smazán"}
+    return {"message": "Lék smazán z plánu a dávkovače"}
 
 
 # ── Fill plan ────────────────────────────────────────────────────────────────

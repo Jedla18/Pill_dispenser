@@ -69,7 +69,7 @@ export async function loadDispensorContent() {
                 <div class="card-body p-0">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
-                            <tr><th class="ps-4" style="width:100px;">Patro</th><th style="width:130px;">Přihrádka č.</th><th>Čas podání</th><th class="pe-4">Léky</th></tr>
+                            <tr><th class="ps-4" style="width:100px;">Patro</th><th style="width:130px;">Přihrádka č.</th><th>Čas podání</th><th class="pe-4">Léky</th><th style="width:50px;"></th></tr>
                         </thead><tbody>`;
             for (let pos = 1; pos <= 7; pos++) {
                 const item = byLayer[layer].find(x => x.position === pos);
@@ -79,11 +79,16 @@ export async function loadDispensorContent() {
                         <td><span class="badge bg-danger fs-6 px-3">${item.compartment || item.position}</span></td>
                         <td><strong>${formatDateStr(item.time)}</strong></td>
                         <td class="pe-4"><small>${item.content}</small></td>
+                        <td>
+                            <button onclick="deleteLoadedPill(${item.id})" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
                     </tr>`;
                 } else {
                     html += `<tr class="table-light">
                         <td class="ps-4"><span class="badge bg-light text-muted border rounded-pill px-3">Pozice ${pos}</span></td>
-                        <td colspan="2" class="text-muted fst-italic"><small>— prázdné —</small></td>
+                        <td colspan="3" class="text-muted fst-italic"><small>— prázdné —</small></td>
                     </tr>`;
                 }
             }
@@ -130,4 +135,26 @@ export async function confirmEmptyAndFill() {
         alert("Chyba při vysypávání dávkovače.");
     }
 }
+
+export async function deleteLoadedPill(loadedPillId) {
+    if (!confirm("Opravdu smazat tento lék z dávkovače?")) return;
+    
+    const r = await fetchWithAuth(`/api/loaded-pills/${loadedPillId}`, { method: "DELETE" });
+    if (r.ok) {
+        const data = await r.json();
+        // Zobrazit toast notifikaci
+        const toast = document.createElement("div");
+        toast.className = "alert alert-success position-fixed bottom-0 end-0 m-3 shadow";
+        toast.style.zIndex = "9999";
+        toast.innerHTML = `<i class="bi bi-check-circle me-2"></i>${data.message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        
+        // Obnovit obsah dávkovače
+        loadDispensorContent();
+        // Obnovit i dashboard
+        loadDashboard();
+    } else {
+        alert("Chyba při mazání léku.");
+    }
 
