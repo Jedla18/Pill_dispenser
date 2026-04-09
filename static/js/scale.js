@@ -178,16 +178,16 @@ export async function loadCustomTable() {
             let pointerColor = "";
             
             if (bmi < 18.5) { bmiStatus = "Podváha"; pointerColor = "#0dcaf0"; }
-            else if (bmi < 25) { bmiStatus = "Normální"; pointerColor = "#198754"; }
-            else if (bmi < 30) { bmiStatus = "Nadváha"; pointerColor = "#ffc107"; }
+            else if (bmi < 25) { bmiStatus = "Ideální váha"; pointerColor = "#198754"; }
+            else if (bmi < 30) { bmiStatus = "Lehká nadváha"; pointerColor = "#ffc107"; }
             else { bmiStatus = "Obezita"; pointerColor = "#dc3545"; }
 
             document.getElementById("bmiValue").textContent = bmi.toFixed(1);
             document.getElementById("bmiLabel").textContent = bmiStatus;
             document.getElementById("bmiLabel").style.color = pointerColor;
 
-            const minBmi = 15;
-            const maxBmi = 40;
+            const minBmi = 16.5;
+            const maxBmi = 35;
             let normalizedBmi = Math.max(minBmi, Math.min(bmi, maxBmi));
             let bmiValuePercent = (normalizedBmi - minBmi) / (maxBmi - minBmi);
 
@@ -195,9 +195,9 @@ export async function loadCustomTable() {
             new Chart(ctxBmi, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Podváha', 'Normální', 'Nadváha', 'Obezita'],
+                    labels: ['Podváha', 'Ideální váha', 'Lehká nadváha', 'Obezita'],
                     datasets: [{
-                        data: [18.5 - 15, 25 - 18.5, 30 - 25, 40 - 30],
+                        data: [18.5 - 16.5, 25 - 18.5, 30 - 25, 35 - 30],
                         backgroundColor: ['#0dcaf0', '#198754', '#ffc107', '#dc3545'],
                         borderWidth: 0,
                         cutout: '75%'
@@ -221,27 +221,52 @@ export async function loadCustomTable() {
                             const centerX = (chartArea.left + chartArea.right) / 2;
                             const centerY = chartArea.bottom;
                             
-                            const angle = Math.PI - (bmiValuePercent * Math.PI);
+                            // Oprava: úhel se musí počítat správně pro rotaci -90
+                            const angle = -Math.PI / 2 + (bmiValuePercent * Math.PI);
 
                             const innerRadius = chart.innerRadius;
                             const outerRadius = chart.outerRadius;
-                            const pointerLength = outerRadius - 10;
+                            const pointerLength = outerRadius + 20;
                             
-                            const tipX = centerX - pointerLength * Math.cos(angle);
-                            const tipY = centerY - pointerLength * Math.sin(angle);
+                            // ...existing code...
                             
                             ctx.save();
+                            
+                            // Vykreslení šipky (ukazatele)
+                            const arrowLength = pointerLength;
+                            const arrowWidth = 100;
+                            
+                            // Vypočítáme body trojúhelníku šipky
+                            const arrowTipX = centerX - arrowLength * Math.cos(angle);
+                            const arrowTipY = centerY - arrowLength * Math.sin(angle);
+                            
+                            // Perpendicular vektory pro strany trojúhelníku
+                            const perpX = Math.sin(angle);
+                            const perpY = -Math.cos(angle);
+                            
+                            const baseX1 = centerX + perpX * arrowWidth;
+                            const baseY1 = centerY + perpY * arrowWidth;
+                            const baseX2 = centerX - perpX * arrowWidth;
+                            const baseY2 = centerY - perpY * arrowWidth;
+                            
+                            // Vykreslení vyplněného trojúhelníku
                             ctx.beginPath();
-                            ctx.moveTo(centerX, centerY);
-                            ctx.lineTo(tipX, tipY);
-                            ctx.lineWidth = 4;
+                            ctx.moveTo(arrowTipX, arrowTipY);
+                            ctx.lineTo(baseX1, baseY1);
+                            ctx.lineTo(baseX2, baseY2);
+                            ctx.closePath();
+                            ctx.fillStyle = pointerColor;
+                            ctx.fill();
                             ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1.5;
                             ctx.stroke();
                             
+                            // Vykreslení středového kruhu
                             ctx.beginPath();
-                            ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+                            ctx.arc(centerX, centerY, 6, 0, 2 * Math.PI);
                             ctx.fillStyle = '#333';
                             ctx.fill();
+                            
                             ctx.restore();
                         }
                     }
@@ -265,11 +290,11 @@ export async function loadCustomTable() {
             });
             
             if (response.ok) {
-                // Záznam byl smazán, obnovíme tabulku
+                window.showToast("Záznam byl úspěšně smazán.", "success");
                 await loadCustomTable();
             } else {
                 const error = await response.json();
-                alert(`Chyba: ${error.detail || "Nepodařilo se smazat záznam"}`);
+                window.showToast(`Chyba: ${error.detail || "Nepodařilo se smazat záznam"}`, "danger");
             }
         });
     });
@@ -323,7 +348,7 @@ export async function addWeightRecord() {
     const weight = parseFloat(document.getElementById("weightInput").value);
     
     if (!weight || weight <= 0) {
-        alert("Prosím, zadejte platnou váhu (větší než 0)");
+        window.showToast("Prosím, zadejte platnou váhu (větší než 0).", "warning");
         return;
     }
     
@@ -340,13 +365,13 @@ export async function addWeightRecord() {
             // Zavřeme modal a obnovíme tabulku
             bootstrap.Modal.getInstance(document.getElementById("addWeightModal")).hide();
             await loadCustomTable();
-            alert("Váha byla přidána a odeslána na školní MQTT broker!");
+            window.showToast("Váha byla přidána a odeslána na školní MQTT broker!", "success");
         } else {
             const error = await response.json();
-            alert(`Chyba: ${error.detail || "Nepodařilo se přidat váhu"}`);
+            window.showToast(`Chyba: ${error.detail || "Nepodařilo se přidat váhu"}`, "danger");
         }
     } catch (err) {
-        alert(`Chyba: ${err.message}`);
+        window.showToast(`Chyba: ${err.message}`, "danger");
     }
 }
 

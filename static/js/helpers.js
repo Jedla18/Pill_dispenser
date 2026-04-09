@@ -61,3 +61,33 @@ export function repeatBadge(repeat) {
     return `<span class="badge bg-light text-muted border">jednorázově</span>`;
 }
 
+/**
+ * Zobrazí toast notifikaci.
+ * @param {string} message - Zpráva k zobrazení.
+ * @param {string} type - Typ notifikace ('success', 'danger', 'info').
+ */
+export function showToast(message, type = 'info') {
+    const toast = document.createElement("div");
+    const icons = {
+        success: 'bi-check-circle-fill',
+        danger: 'bi-exclamation-triangle-fill',
+        info: 'bi-info-circle-fill'
+    };
+    const icon = icons[type] || icons['info'];
+
+    toast.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3 shadow d-flex align-items-center`;
+    toast.style.zIndex = "9999";
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `<i class="bi ${icon} me-2"></i><div>${message}</div>`;
+
+    document.body.appendChild(toast);
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        // Add fade out effect
+        toast.style.transition = 'opacity 0.5s ease';
+        toast.style.opacity = '0';
+        // Remove after transition
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, 3000);
+}

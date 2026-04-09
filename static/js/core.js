@@ -2,7 +2,8 @@
 // CORE.js - Inicializace a globální stav
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// DOM elementy
+
+import { login } from './auth.js'
 export const contentDiv = document.getElementById("main-content");
 export const loginView  = document.getElementById("login-view");
 export const appView    = document.getElementById("app-view");
@@ -17,8 +18,28 @@ export const state = {
 
 // Inicializace aplikace
 export function initApp() {
+    console.log("core.js: initApp() called.");
     if (token) {
+        console.log("core.js: Token found, showing app.");
         showApp();
+    } else {
+        console.log("core.js: No token, showing login view.");
+    }
+    // Přidá event listener na přihlašovací tlačítko
+    setupLoginButton();
+}
+
+export function setupLoginButton() {
+    console.log("core.js: setupLoginButton() called.");
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+        console.log("core.js: Login button found, adding click listener.");
+        loginBtn.addEventListener('click', async () => {
+            console.log("core.js: Login button clicked.");
+            await login(); // Zavoláš přímo importovanou funkci
+        });
+    } else {
+        console.error("core.js: Login button #login-btn not found!");
     }
 }
 
@@ -37,4 +58,3 @@ export function hideApp() {
 export function setToken(newToken) {
     token = newToken;
 }
-

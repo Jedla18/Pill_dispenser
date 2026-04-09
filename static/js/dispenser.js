@@ -111,15 +111,10 @@ export async function emptyDispenser() {
     const r = await fetchWithAuth("/api/empty-dispenser", { method: "POST" });
     if (r.ok) {
         const data = await r.json();
-        const toast = document.createElement("div");
-        toast.className = "alert alert-success position-fixed bottom-0 end-0 m-3 shadow";
-        toast.style.zIndex = "9999";
-        toast.innerHTML = `<i class="bi bi-check-circle me-2"></i>${data.message}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        window.showToast(data.message, "success");
         loadDashboard();
     } else {
-        alert("Chyba při vysypávání dávkovače.");
+        window.showToast("Chyba při vysypávání dávkovače.", "danger");
     }
 }
 
@@ -132,7 +127,7 @@ export async function confirmEmptyAndFill() {
     if (r.ok) {
         startFillingProcess();
     } else {
-        alert("Chyba při vysypávání dávkovače.");
+        window.showToast("Chyba při vysypávání dávkovače.", "danger");
     }
 }
 
@@ -142,19 +137,13 @@ export async function deleteLoadedPill(loadedPillId) {
     const r = await fetchWithAuth(`/api/loaded-pills/${loadedPillId}`, { method: "DELETE" });
     if (r.ok) {
         const data = await r.json();
-        // Zobrazit toast notifikaci
-        const toast = document.createElement("div");
-        toast.className = "alert alert-success position-fixed bottom-0 end-0 m-3 shadow";
-        toast.style.zIndex = "9999";
-        toast.innerHTML = `<i class="bi bi-check-circle me-2"></i>${data.message}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        window.showToast(data.message, "success");
         
         // Obnovit obsah dávkovače
         loadDispensorContent();
         // Obnovit i dashboard
         loadDashboard();
     } else {
-        alert("Chyba při mazání léku.");
+        window.showToast("Chyba při mazání léku.", "danger");
     }
-
+}

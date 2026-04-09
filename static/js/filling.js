@@ -286,7 +286,10 @@ export function showFillSummary() {
 
 export async function confirmFilling(btn) {
     const plan = state.currentFillPlan;
-    if (!plan) { alert("Plán nenalezen."); return; }
+    if (!plan) {
+        window.showToast("Plán nenalezen.", "danger");
+        return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Ukládám...`;
@@ -299,8 +302,9 @@ export async function confirmFilling(btn) {
 
     if (r.ok) {
         loadDispensorContent();
+        window.showToast("Dávkovač byl úspěšně naplněn a data uložena.", "success");
     } else {
-        alert("Chyba při ukládání.");
+        window.showToast("Chyba při ukládání.", "danger");
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-check-circle me-2"></i>Uložit do DB a odeslat MCU`;
     }
@@ -326,4 +330,3 @@ export function updateCarouselUI(idx, total) {
         b.className = `btn btn-sm ${i===idx?"btn-primary":"btn-outline-secondary"} step-btn`;
     });
 }
-

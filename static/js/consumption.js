@@ -43,15 +43,8 @@ export async function deleteConsumption(consumptionId) {
     const r = await fetchWithAuth(`/api/consumption/${consumptionId}`, { method: "DELETE" });
     if (r.ok) {
         loadConsumption();
-        // Toast notifikace
-        const toast = document.createElement("div");
-        toast.className = "alert alert-success position-fixed bottom-0 end-0 m-3 shadow";
-        toast.style.zIndex = "9999";
-        toast.innerHTML = `<i class="bi bi-check-circle me-2"></i>Záznam smazán`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        window.showToast("Záznam smazán", "success");
     } else {
-        alert("Chyba při mazání záznamu.");
+        window.showToast("Chyba při mazání záznamu.", "danger");
     }
 }
-

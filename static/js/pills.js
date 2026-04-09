@@ -138,8 +138,14 @@ export async function submitPill() {
     const dose   = document.getElementById("pillDose").value.trim();
     const repeat = document.querySelector('input[name="repeat"]:checked')?.value || "none";
 
-    if (!name || !dose) { alert("Vyplňte všechny údaje!"); return; }
-    if (!timeEl.value)  { alert("Vyplňte čas!"); return; }
+    if (!name || !dose) {
+        window.showToast("Vyplňte prosím název léku i dávku.", "warning");
+        return;
+    }
+    if (!timeEl.value) {
+        window.showToast("Vyplňte prosím čas.", "warning");
+        return;
+    }
 
     let time = timeEl.value;
 
@@ -162,15 +168,23 @@ export async function submitPill() {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({name, time, dose, repeat})
     });
-    if (r.ok) loadAddPills();
-    else alert("Chyba při ukládání.");
+    if (r.ok) {
+        window.showToast("Lék byl úspěšně uložen.", "success");
+        loadAddPills();
+    } else {
+        window.showToast("Chyba při ukládání léku.", "danger");
+    }
 }
 
 export async function deletePill(id) {
     if (!confirm("Opravdu smazat tento lék?")) return;
     const r = await fetchWithAuth(`/api/pills/${id}`, {method: "DELETE"});
-    if (r.ok) fetchPillsList();
-    else alert("Chyba při mazání.");
+    if (r.ok) {
+        window.showToast("Lék byl smazán.", "success");
+        fetchPillsList();
+    } else {
+        window.showToast("Chyba při mazání léku.", "danger");
+    }
 }
 
 export function updateTimeInput(repeat) {
@@ -208,4 +222,3 @@ export function updateTimeInput(repeat) {
         }
     }
 }
-

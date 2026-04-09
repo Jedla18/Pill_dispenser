@@ -13,6 +13,7 @@ import { loadCustomTable, updateHeight } from './scale.js';
 import { startFillingProcess, showFillSummary, confirmFilling, moveCarousel, jumpToStep } from './filling.js';
 import { loadDispensorContent, emptyDispenser, confirmEmptyAndFill, deleteLoadedPill } from './dispenser.js';
 import { pingDispenser, pingScale, pingDevice } from './ping.js';
+import { showToast } from './helpers.js';
 
 // Export veřejných funkcí do globálního scope (pro onclick handlery v HTML)
 window.login = login;
@@ -38,9 +39,10 @@ window.deleteLoadedPill = deleteLoadedPill;
 window.pingDispenser = pingDispenser;
 window.pingScale = pingScale;
 window.pingDevice = pingDevice;
+window.showToast = showToast;
 
 // Inicializace aplikace
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("app.js: DOMContentLoaded event fired.");
     initApp();
 });
-
