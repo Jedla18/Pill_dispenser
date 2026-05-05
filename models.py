@@ -49,7 +49,8 @@ class Consumption(Base):
     date      = Column(String)
     time      = Column(String)
     pill_name = Column(String)
-    status    = Column(String)   # "Vzato" | "Vynecháno" | "Vysypáno"
+    status    = Column(String)   # "Vzato" | "Vydáno" | "ERROR: 1" | "Vynecháno" | "Vysypáno"
+    pill_id   = Column(Integer, nullable=True)  # Reference na LoadedPill.id
     owner_id  = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="consumptions")

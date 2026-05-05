@@ -19,19 +19,27 @@ export async function loadConsumption() {
     if (data.consumed.length === 0) {
         html += `<tr><td colspan="5" class="text-center py-4 text-muted">Žádná data.</td></tr>`;
     } else {
-        data.consumed.forEach(c => {
-            const badge = c.status === "Vzato" ? "bg-success" : "bg-danger";
-            html += `<tr>
-                <td class="ps-4">${c.date}</td><td>${formatTimeOnly(c.time)}</td>
-                <td><strong>${c.name}</strong></td>
-                <td class="pe-4"><span class="badge ${badge}">${c.status}</span></td>
-                <td>
-                    <button onclick="deleteConsumption(${c.id})" class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
-        });
+        // Filtrujeme: zobrazujeme jen "Vydáno" a "ERROR: X"
+        const filtered = data.consumed.filter(c => c.status === "Vydáno" || c.status.startsWith("ERROR:"));
+
+        if (filtered.length === 0) {
+            html += `<tr><td colspan="5" class="text-center py-4 text-muted">Žádná data.</td></tr>`;
+        } else {
+            filtered.forEach(c => {
+                let badge = "bg-danger";  // Default - ERROR
+                if (c.status === "Vydáno") badge = "bg-success";      // Zelené
+                html += `<tr>
+                    <td class="ps-4">${c.date}</td><td>${formatTimeOnly(c.time)}</td>
+                    <td><strong>${c.name}</strong></td>
+                    <td class="pe-4"><span class="badge ${badge}">${c.status}</span></td>
+                    <td>
+                        <button onclick="deleteConsumption(${c.id})" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+        }
     }
     html += `</tbody></table></div></div>`;
     contentDiv.innerHTML = html;

@@ -27,14 +27,20 @@ _ping_sent_at: dict[str, float] = {}
 
 def _on_message(client, userdata, msg):
     try:
+        print(f"[MQTT] 📨 Zpráva přijata - Topic: {msg.topic}, Payload: {msg.payload.decode()}")
+
         # Topic formát: "typ_zarizeni/uzivatel/akce"
         # Např: "scale/admin/data" nebo "dispenser/admin/pong"
         parts = msg.topic.split("/")
-        if len(parts) < 3: return
+        if len(parts) < 3:
+            print(f"[MQTT] ⚠️  Neplatný formát topicu: {msg.topic}")
+            return
 
         device_type = parts[0]  # "dispenser" nebo "scale"
         username = parts[1]
         action = parts[2]
+
+        print(f"[MQTT] 🔍 Parsováno - Device: {device_type}, User: {username}, Action: {action}")
 
         # Unikátní klíč pro ping-pong (např. "scale:admin")
         device_key = f"{device_type}:{username}"
@@ -52,14 +58,25 @@ def _on_message(client, userdata, msg):
             payload = json.loads(msg.payload.decode())
             _handle_scale_data(username, payload)
 
-        # --- LOGIKA PRO DÁVKOVAČ (původní) ---
+        # --- LOGIKA PRO DÁVKOVAČ ---
         elif device_type == "dispenser":
+            payload = json.loads(msg.payload.decode())
+            print(f"[MQTT] 📦 Dispenser zpráva: action={action}, payload={payload}")
             if action == "request_pills":
                 _handle_request_pills(username)
-            # ... zbytek vaší logiky ...
+            elif action == "dispense_confirm":
+                print(f"[MQTT] ✅ Volám _handle_dispense_confirm")
+                _handle_dispense_confirm(username, payload)
+            elif action == "cycle_result":
+                print(f"[MQTT] ✅ Volám _handle_cycle_result")
+                _handle_cycle_result(username, payload)
+            else:
+                print(f"[MQTT] ⚠️  Neznámá action: {action}")
 
     except Exception as e:
-        print(f"[MQTT] Chyba: {e}")
+        import traceback
+        print(f"[MQTT] ❌ Chyba: {e}")
+        print(f"[MQTT] Traceback: {traceback.format_exc()}")
 
 
 def _handle_scale_data(username, payload):
@@ -147,41 +164,112 @@ def _handle_request_pills(username: str):
 
 
 def _handle_dispense_confirm(username: str, payload: dict):
-    """Zapíše vydaný lék do historie (Consumption) a smaže ho z plánu (LoadedPill)."""
+    """
+    dispense_confirm nyní JENOM potvrzuje, že Arduino zahájil operaci.
+    Záznam se vytvoří až když přijde cycle_result (SUCCESS nebo ERROR).
+    """
+    # Logging pro debug, ale nic se neuloží do DB
+    loaded_pill_id = int(payload.get("loaded_pill_id"))
+    timestamp = payload.get("timestamp")
+    print(f"[MQTT] 📩 dispense_confirm přijat: lék ID {loaded_pill_id}, čas {timestamp}")
+    print(f"[MQTT] ℹ️  Záznam se vytvoří až v cycle_result")
+
+def _handle_cycle_result(username: str, payload: dict):
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user:
             return
 
-        loaded_pill_id = payload.get("loaded_pill_id")
-        timestamp = payload.get("timestamp")  # Např. "2023-10-27T08:00:00"
+        pill_id = int(payload.get("pill_id"))
+        status = payload.get("status")
+        error_code = payload.get("error_code", 0)
+        timestamp = payload.get("timestamp")
 
-        # Najdeme lék v dávkovači
-        pill = db.query(LoadedPill).filter(LoadedPill.id == loaded_pill_id, LoadedPill.owner_id == user.id).first()
+        print(f"[MQTT] cycle_result: pill_id={pill_id}, status={status}, error_code={error_code}")
 
-        if pill:
-            # Vytvoříme záznam o užití
-            db.add(Consumption(
-                date=timestamp[:10] if timestamp else time.strftime("%Y-%m-%d"),
-                time=pill.time,
-                pill_name=pill.pills_content,
-                status="Vzato",
-                owner_id=user.id
-            ))
-            # Smažeme lék z fyzického plánu dávkovače
-            db.delete(pill)
+        consumption = db.query(Consumption).filter(
+            Consumption.pill_id == pill_id,
+            Consumption.owner_id == user.id
+        ).first()
+
+        loaded_pill = db.query(LoadedPill).filter(
+            LoadedPill.id == pill_id,
+            LoadedPill.owner_id == user.id
+        ).first()
+
+        if status == "SUCCESS":
+            # ✅ SUCCESS → AKTUALIZUJ na "Vydáno" a PONECH v DB
+            if consumption:
+                consumption.status = "Vydáno"
+                print(f"[MQTT] ✅ SUCCESS: Lék ID {pill_id} aktualizován → Vydáno")
+            else:
+                # Vytvoř nový záznam s SUCCESS
+                if loaded_pill:
+                    pill_time = loaded_pill.time[-5:] if loaded_pill.time and len(loaded_pill.time) >= 5 else "00:00"
+                    pill_name = loaded_pill.pills_content
+                else:
+                    pill_time = timestamp[11:16] if timestamp and len(timestamp) > 10 else "00:00"
+                    pill_name = f"Lék ID {pill_id}"
+
+                new_consumption = Consumption(
+                    date=timestamp[:10] if timestamp else time.strftime("%Y-%m-%d"),
+                    time=pill_time,
+                    pill_name=pill_name,
+                    status="Vydáno",
+                    pill_id=pill_id,
+                    owner_id=user.id
+                )
+                db.add(new_consumption)
+                print(f"[MQTT] ✅ SUCCESS: Nový záznam pro lék ID {pill_id} → Vydáno")
+
+            # Smaž jen z loaded_pills, ne z consumptions!
+            if loaded_pill:
+                db.delete(loaded_pill)
+                print(f"[MQTT] 🗑️  Lék ID {pill_id} smazán z loaded_pills")
+
             db.commit()
-            print(f"[MQTT] Výdej potvrzen a uložen: lék ID {loaded_pill_id} ({username})")
-        else:
-            print(f"[MQTT] Potvrzovaný lék ID {loaded_pill_id} nebyl nalezen v db (možná už byl smazán?).")
+
+        elif status == "ERROR":
+            # ❌ ERROR → PONECHAT jako varovný záznam
+            final_status = f"ERROR: {error_code}"
+
+            if consumption:
+                # Aktualizuj stav na ERROR
+                consumption.status = final_status
+                print(f"[MQTT] ❌ ERROR: Lék ID {pill_id} aktualizován → {final_status}")
+            else:
+                # Vytvoř nový záznam s ERROR
+                if loaded_pill:
+                    pill_time = loaded_pill.time[-5:] if loaded_pill.time and len(loaded_pill.time) >= 5 else "00:00"
+                    pill_name = loaded_pill.pills_content
+                else:
+                    pill_time = timestamp[11:16] if timestamp and len(timestamp) > 10 else "00:00"
+                    pill_name = f"Lék ID {pill_id}"
+
+                new_consumption = Consumption(
+                    date=timestamp[:10] if timestamp else time.strftime("%Y-%m-%d"),
+                    time=pill_time,
+                    pill_name=pill_name,
+                    status=final_status,
+                    pill_id=pill_id,
+                    owner_id=user.id
+                )
+                db.add(new_consumption)
+                print(f"[MQTT] ❌ ERROR: Nový záznam pro lék ID {pill_id} → {final_status}")
+
+            # Vždy smaž z loaded_pills pokud existuje
+            if loaded_pill:
+                db.delete(loaded_pill)
+                print(f"[MQTT] 🗑️  Lék ID {pill_id} smazán z loaded_pills")
+
+            db.commit()
 
     except Exception as e:
         db.rollback()
-        print(f"[MQTT] Chyba při ukládání potvrzení do DB: {e}")
+        print(f"[MQTT] ❌ Chyba: {e}")
     finally:
         db.close()
-
 
 def start_listener():
     """Spustí MQTT listener v background threadu - ŠKOLNÍ BROKER."""

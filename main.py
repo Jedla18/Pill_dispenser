@@ -113,26 +113,7 @@ def dashboard(current_user: User = Depends(get_current_user), db: Session = Depe
     }
 
 
-# ── CONSUMPTION ENDPOINT ───────────────────────────────────────────────────────
 
-@app.get("/api/consumption")
-def get_consumption_history(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Vrátí historii užitých léků (kompatibilita s frontend)"""
-    consumptions = db.query(Consumption).filter(
-        Consumption.owner_id == current_user.id
-    ).order_by(Consumption.date.desc(), Consumption.time.desc()).all()
-    
-    return {
-        "consumed": [
-            {
-                "date": c.date,
-                "time": c.time,
-                "name": c.pill_name,
-                "status": c.status
-            }
-            for c in consumptions
-        ]
-    }
 
 
 
