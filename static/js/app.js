@@ -1,7 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════════════
-// APP.js - Hlavní inicializační modul
-// Provádí inicializaci aplikace a exportuje veřejné funkce do globálního scope
-// ═══════════════════════════════════════════════════════════════════════════════
 
 // Importy
 import { initApp } from './core.js';

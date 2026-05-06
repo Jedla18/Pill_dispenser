@@ -61,21 +61,21 @@ def _on_message(client, userdata, msg):
         # --- LOGIKA PRO DÁVKOVAČ ---
         elif device_type == "dispenser":
             payload = json.loads(msg.payload.decode())
-            print(f"[MQTT] 📦 Dispenser zpráva: action={action}, payload={payload}")
+            print(f"[MQTT] Dispenser zpráva: action={action}, payload={payload}")
             if action == "request_pills":
                 _handle_request_pills(username)
             elif action == "dispense_confirm":
-                print(f"[MQTT] ✅ Volám _handle_dispense_confirm")
+                print(f"[MQTT] Volám _handle_dispense_confirm")
                 _handle_dispense_confirm(username, payload)
             elif action == "cycle_result":
-                print(f"[MQTT] ✅ Volám _handle_cycle_result")
+                print(f"[MQTT] Volám _handle_cycle_result")
                 _handle_cycle_result(username, payload)
             else:
-                print(f"[MQTT] ⚠️  Neznámá action: {action}")
+                print(f"[MQTT]  Neznámá action: {action}")
 
     except Exception as e:
         import traceback
-        print(f"[MQTT] ❌ Chyba: {e}")
+        print(f"[MQTT] Chyba: {e}")
         print(f"[MQTT] Traceback: {traceback.format_exc()}")
 
 
@@ -171,8 +171,8 @@ def _handle_dispense_confirm(username: str, payload: dict):
     # Logging pro debug, ale nic se neuloží do DB
     loaded_pill_id = int(payload.get("loaded_pill_id"))
     timestamp = payload.get("timestamp")
-    print(f"[MQTT] 📩 dispense_confirm přijat: lék ID {loaded_pill_id}, čas {timestamp}")
-    print(f"[MQTT] ℹ️  Záznam se vytvoří až v cycle_result")
+    print(f"[MQTT] dispense_confirm přijat: lék ID {loaded_pill_id}, čas {timestamp}")
+    print(f"[MQTT] Záznam se vytvoří až v cycle_result")
 
 def _handle_cycle_result(username: str, payload: dict):
     db = SessionLocal()
@@ -199,10 +199,10 @@ def _handle_cycle_result(username: str, payload: dict):
         ).first()
 
         if status == "SUCCESS":
-            # ✅ SUCCESS → AKTUALIZUJ na "Vydáno" a PONECH v DB
+            #SUCCESS → AKTUALIZUJ na "Vydáno" a PONECH v DB
             if consumption:
                 consumption.status = "Vydáno"
-                print(f"[MQTT] ✅ SUCCESS: Lék ID {pill_id} aktualizován → Vydáno")
+                print(f"[MQTT] SUCCESS: Lék ID {pill_id} aktualizován → Vydáno")
             else:
                 # Vytvoř nový záznam s SUCCESS
                 if loaded_pill:
@@ -221,23 +221,23 @@ def _handle_cycle_result(username: str, payload: dict):
                     owner_id=user.id
                 )
                 db.add(new_consumption)
-                print(f"[MQTT] ✅ SUCCESS: Nový záznam pro lék ID {pill_id} → Vydáno")
+                print(f"[MQTT SUCCESS: Nový záznam pro lék ID {pill_id} → Vydáno")
 
             # Smaž jen z loaded_pills, ne z consumptions!
             if loaded_pill:
                 db.delete(loaded_pill)
-                print(f"[MQTT] 🗑️  Lék ID {pill_id} smazán z loaded_pills")
+                print(f"[MQTT] Lék ID {pill_id} smazán z loaded_pills")
 
             db.commit()
 
         elif status == "ERROR":
-            # ❌ ERROR → PONECHAT jako varovný záznam
+            # ERROR → PONECHAT jako varovný záznam
             final_status = f"ERROR: {error_code}"
 
             if consumption:
                 # Aktualizuj stav na ERROR
                 consumption.status = final_status
-                print(f"[MQTT] ❌ ERROR: Lék ID {pill_id} aktualizován → {final_status}")
+                print(f"[MQTT] ERROR: Lék ID {pill_id} aktualizován → {final_status}")
             else:
                 # Vytvoř nový záznam s ERROR
                 if loaded_pill:
@@ -256,18 +256,18 @@ def _handle_cycle_result(username: str, payload: dict):
                     owner_id=user.id
                 )
                 db.add(new_consumption)
-                print(f"[MQTT] ❌ ERROR: Nový záznam pro lék ID {pill_id} → {final_status}")
+                print(f"[MQTT] ERROR: Nový záznam pro lék ID {pill_id} → {final_status}")
 
             # Vždy smaž z loaded_pills pokud existuje
             if loaded_pill:
                 db.delete(loaded_pill)
-                print(f"[MQTT] 🗑️  Lék ID {pill_id} smazán z loaded_pills")
+                print(f"[MQTT] Lék ID {pill_id} smazán z loaded_pills")
 
             db.commit()
 
     except Exception as e:
         db.rollback()
-        print(f"[MQTT] ❌ Chyba: {e}")
+        print(f"[MQTT] Chyba: {e}")
     finally:
         db.close()
 
@@ -286,10 +286,10 @@ def start_listener():
 
         client.subscribe("dispenser/#")
         client.subscribe("scale/#")
-        print("[MQTT] ✅ Listener běží na ŠKOLNÍM brokeru a poslouchá na 'dispenser/#' a 'scale/#'")
+        print("[MQTT] Listener běží na ŠKOLNÍM brokeru a poslouchá na 'dispenser/#' a 'scale/#'")
         client.loop_forever()
     except Exception as e:
-        print(f"[MQTT] ❌ Broker nedostupný: {e}")
+        print(f"[MQTT] Broker nedostupný: {e}")
 
 
 def send(topic: str, payload: dict):

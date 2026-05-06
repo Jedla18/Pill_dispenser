@@ -1,6 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════════════
-// AUTH.js - Autentifikace a autorizace
-// ═══════════════════════════════════════════════════════════════════════════════
 
 import { setToken, showApp, hideApp } from './core.js';
 import { showToast } from './helpers.js';

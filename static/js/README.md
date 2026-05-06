@@ -123,18 +123,4 @@ Všechny veřejné funkce jsou exportovány do globálního scope (`window`) tak
 <!-- ... apod. -->
 ```
 
-## Přínosy modulární struktury
-
-✅ **Čitelnost** - Menší soubory jsou snáze pochopitelné  
-✅ **Údržba** - Změny v jedné doméně neovlivňují ostatní  
-✅ **Testování** - Jednotlivé moduly lze testovat izolovaně  
-✅ **Opětovné použití** - Funkce lze importovat v jiných projektech  
-✅ **Výkon** - Moduly se mohou načítat asynchronně  
-
-## Budoucí úpravy
-
-Pokud chcete dále optimalizovat:
-- Zvážit bundler (Webpack, Vite) pro produkci
-- Přidat TypeScript pro typovou bezpečnost
-- Rozdělit velké moduly (filling.js, scale.js) na menší
 

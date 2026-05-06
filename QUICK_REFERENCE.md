@@ -249,22 +249,5 @@ loadDashboard();
 fetchWithAuth('/api/pills').then(r => r.json()).then(console.log);
 ```
 
-✅ Zkontroluj Network traffic:
-```
-API Call → Network tab → Response
-```
 
-✅ Prohledávej kód:
-```
-Ctrl+Shift+F v VS Code
-```
-
-✅ Formátuj kód:
-```
-Shift+Alt+F v VS Code
-```
-
----
-
-**Máš něco nejasného? Podívej se na TESTING_GUIDE.md nebo DEPENDENCY_DIAGRAM.md! 🎉**
 
